@@ -6,8 +6,7 @@
 }:
 with lib;
 let
-  inherit (config) nixflix;
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
 
   mkSecureCurl = import ../../../lib/mk-secure-curl.nix { inherit lib pkgs; };
   authUtil = import ../authUtil.nix { inherit lib pkgs cfg; };
@@ -62,7 +61,7 @@ let
   ) pluginsWithConfig;
 in
 {
-  config = mkIf (nixflix.enable && cfg.enable) {
+  config = mkIf (cfg.enable && cfg.declarative.enable) {
     systemd.tmpfiles.settings."10-jellyfin"."${cfg.dataDir}/plugins".d = {
       mode = "0755";
       inherit (cfg) user;
@@ -71,8 +70,8 @@ in
 
     systemd.services.jellyfin-plugins = {
       description = "Manage Jellyfin plugins";
-      after = [ "jellyfin-system-config.service" ] ++ config.nixflix.serviceDependencies;
-      requires = [ "jellyfin-system-config.service" ] ++ config.nixflix.serviceDependencies;
+      after = [ "jellyfin-system-config.service" ];
+      requires = [ "jellyfin-system-config.service" ];
       wantedBy = [ "multi-user.target" ];
 
       serviceConfig = {

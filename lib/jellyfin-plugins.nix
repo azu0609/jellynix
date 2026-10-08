@@ -24,7 +24,7 @@ let
         type = lib.types.nullOr lib.types.str;
         default = null;
         description = ''
-          Optional repository name from `nixflix.jellyfin.system.pluginRepositories`.
+          Optional repository name from `services.jellyfin.system.pluginRepositories`.
           Leave unset to resolve by plugin name across all enabled repositories.
         '';
         example = "Jellyfin Universal Plugin Repo";
@@ -111,7 +111,7 @@ let
 
               Can be found when running the following while the plugin is installed:
               ```bash
-              curl -s -H "Authorization: MediaBrowser Token=$(sudo cat /run/jellyfin/auth-token)" \
+              curl -s -H "Authorization: MediaBrowser Token=$(sudo cat /run/jellyfin-config/auth-token)" \
                                    http://127.0.0.1:8096/Plugins | jq '.[].Name'
               ```
             '';
@@ -125,7 +125,7 @@ let
               Whether this plugin should be installed. When false, the plugin is
               treated as absent: if it was previously installed by nixflix it will
               be uninstalled on the next nixos-rebuild. This is equivalent to
-              removing the attribute entirely from nixflix.jellyfin.plugins.
+              removing the attribute entirely from services.jellyfin.plugins.
             '';
           };
         };

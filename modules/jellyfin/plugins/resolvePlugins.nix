@@ -136,17 +136,17 @@ let
       );
     in
     if repositoryName != null && matchingRepositories == [ ] then
-      throw "nixflix.jellyfin.plugins.\"${pluginName}\": repository '${repositoryName}' was not found in nixflix.jellyfin.system.pluginRepositories"
+      throw "services.jellyfin.plugins.\"${pluginName}\": repository '${repositoryName}' was not found in services.jellyfin.system.pluginRepositories"
     else if selectedMatches == [ ] then
-      throw "nixflix.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' was not found in any configured plugin repository"
+      throw "services.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' was not found in any configured plugin repository"
     else if selectedCompatibleMatches == [ ] then
-      throw "nixflix.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' did not have a compatible release for Jellyfin ${jellyfinVersion}"
+      throw "services.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' did not have a compatible release for Jellyfin ${jellyfinVersion}"
     else if repositoryName == null && lib.length selectedCompatibleMatches > 1 then
-      throw "nixflix.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' matched multiple repositories (${matchingRepositoriesSummary}) for Jellyfin ${jellyfinVersion}. Set `package = nixflix.lib.jellyfinPlugins.fromRepo { repository = \"...\"; ...; }` to disambiguate."
+      throw "services.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' matched multiple repositories (${matchingRepositoriesSummary}) for Jellyfin ${jellyfinVersion}. Set `package = nixflix.lib.jellyfinPlugins.fromRepo { repository = \"...\"; ...; }` to disambiguate."
     else if lib.length selectedCompatibleMatches == 1 then
       { match = lib.head selectedCompatibleMatches; }
     else if lib.length selectedMatches > 1 then
-      throw "nixflix.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' matched multiple releases. Add `repository` or update the resolver to disambiguate the target ABI for Jellyfin ${jellyfinVersion}."
+      throw "services.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' matched multiple releases. Add `repository` or update the resolver to disambiguate the target ABI for Jellyfin ${jellyfinVersion}."
     else
       { match = lib.head selectedMatches; };
 

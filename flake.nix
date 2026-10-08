@@ -1,148 +1,46 @@
 {
-  description = "Generic NixOS Jellyfin media server configuration with Arr stack";
+  description = "Declarative Jellyfin configuration on top of the nixpkgs NixOS service";
 
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    treefmt-nix = {
-      url = "github:numtide/treefmt-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    mkdocs-catppuccin = {
-      url = "github:ruslanlap/mkdocs-catppuccin";
-      flake = false;
-    };
-    vpn-confinement.url = "github:Maroka-chan/VPN-Confinement";
-  };
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      treefmt-nix,
-      vpn-confinement,
-      ...
-    }@inputs:
+    { self, nixpkgs }:
     let
       inherit (nixpkgs) lib;
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
-
       perSystem =
-        f:
-        lib.genAttrs systems (
-          system:
-          f rec {
-            inherit system lib;
-            pkgs = import nixpkgs {
-              inherit system;
-              config.allowUnfree = true;
-              config.allowUnfreePredicate = _: true;
-              overlays = [ self.overlays.default ];
-            };
-            treefmt = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
-          }
-        );
+        f: lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system: f nixpkgs.legacyPackages.${system});
     in
     {
       lib.buildJellyfinPlugin = { pkgs }: import ./lib/build-jellyfin-plugin.nix { inherit pkgs; };
       lib.jellyfinPlugins = import ./lib/jellyfin-plugins.nix { inherit lib; };
 
-      overlays.default = import ./pkgs/overlay.nix;
+      nixosModules.default = import ./modules;
+      nixosModules.jellyfin = self.nixosModules.default;
 
-      nixosModules.default = {
-        imports = [
-          (import ./modules)
-          vpn-confinement.nixosModules.default
-        ];
-      };
-      nixosModules.nixflix = self.nixosModules.default;
-
-      packages = perSystem (
-        {
-          system,
-          pkgs,
-          ...
-        }:
-        (import ./docs { inherit pkgs inputs; })
-        // {
-          default = self.packages.${system}.docs;
-          inherit (pkgs) maintainerr;
-        }
-      );
-
-      apps = perSystem (
-        {
-          system,
-          pkgs,
-          ...
-        }:
-        {
-          docs-serve = {
-            type = "app";
-            program = toString (
-              pkgs.writeShellScript "docs-serve" ''
-                echo "Starting documentation server from ${self.packages.${system}.docs}"
-                ${pkgs.python3}/bin/python3 -m http.server --directory ${self.packages.${system}.docs} 8000
-              ''
-            );
-          };
-        }
-      );
-
-      formatter = perSystem ({ treefmt, ... }: treefmt.config.build.wrapper);
-
-      checks = perSystem (
-        {
-          treefmt,
-          lib,
-          pkgs,
-          system,
-          ...
-        }:
-        let
-          tests = import ./tests {
-            inherit system pkgs lib;
-            nixosModules = self.nixosModules.default;
-          };
-        in
-        {
-          formatting = treefmt.config.build.check self;
-          docs-build = self.packages.${system}.docs;
-        }
-        // tests.vm-tests
-        // {
-          unit-tests = pkgs.linkFarmFromDrvs "unit-tests" (lib.attrValues tests.unit-tests);
-        }
-      );
-
-      devShells = perSystem (
-        {
-          pkgs,
-          treefmt,
-          ...
-        }:
-        {
-          default = pkgs.mkShell {
-            nativeBuildInputs = [
-              treefmt.config.build.wrapper
-              pkgs.yarn-berry_4.yarn-berry-fetcher
-              pkgs.jq
-            ]
-            ++ (lib.attrValues treefmt.config.build.programs);
-
-            shellHook = ''
-              echo "🎬 Nixflix Development Shell"
-              echo ""
-              echo "Documentation Commands:"
-              echo "  nix build .#docs        - Build documentation"
-              echo "  nix run .#docs-serve    - Serve docs"
-              echo "  nix fmt                 - Format code"
-              echo ""
-            '';
-          };
-        }
-      );
+      formatter = perSystem (pkgs: pkgs.nixfmt);
+      checks = perSystem (pkgs: {
+        jellyfin = import ./tests/vm-tests/jellyfin-basic.nix {
+          inherit pkgs;
+          inherit (pkgs.stdenv.hostPlatform) system;
+          nixosModules = self.nixosModules.default;
+        };
+        unit-tests = pkgs.linkFarmFromDrvs "jellyfin-unit-tests" (
+          lib.attrValues (
+            import ./tests/unit-tests {
+              inherit pkgs;
+              inherit (pkgs.stdenv.hostPlatform) system;
+              nixosModules = self.nixosModules.default;
+            }
+          )
+        );
+      });
+      devShells = perSystem (pkgs: {
+        default = pkgs.mkShell {
+          packages = [
+            pkgs.nixfmt
+            pkgs.jq
+          ];
+        };
+      });
     };
 }

@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
   jellyfinPlugins = import ../../../lib/jellyfin-plugins.nix { inherit lib; };
   buildJellyfinPlugin = import ../../../lib/build-jellyfin-plugin.nix { inherit pkgs; };
   selectVersions = import ./selectVersions.nix {
@@ -14,7 +14,7 @@ let
   };
 in
 {
-  options.nixflix.jellyfin.plugins =
+  options.services.jellyfin.plugins =
     let
       pluginsJson = builtins.fromJSON (builtins.readFile ./plugins.json);
 

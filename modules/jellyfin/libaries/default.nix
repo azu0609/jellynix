@@ -6,8 +6,7 @@
 }:
 with lib;
 let
-  inherit (config) nixflix;
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
 
   util = import ../util.nix { inherit lib; };
   mkSecureCurl = import ../../../lib/mk-secure-curl.nix { inherit lib pkgs; };
@@ -55,12 +54,13 @@ in
 {
   imports = [ ./options.nix ];
 
-  config = mkIf (nixflix.enable && cfg.enable && libraries != { }) {
+  config = mkIf (cfg.enable && cfg.declarative.enable && libraries != { }) {
     systemd.services.jellyfin-libraries = {
       description = "Configure Jellyfin Libraries via API";
-      after = [ "jellyfin-plugins.service" ] ++ config.nixflix.serviceDependencies;
-      requires = [ "jellyfin-plugins.service" ] ++ config.nixflix.serviceDependencies;
+      after = [ "jellyfin-plugins.service" ];
+      requires = [ "jellyfin-plugins.service" ];
       wantedBy = [ "multi-user.target" ];
+      unitConfig.RequiresMountsFor = concatMap (library: library.paths) (attrValues libraries);
 
       serviceConfig = {
         Type = "oneshot";
@@ -75,17 +75,6 @@ in
         BASE_URL="${baseUrl}"
 
         echo "Configuring Jellyfin libraries..."
-
-        echo "Creating library paths..."
-        ${concatStringsSep "\n" (
-          mapAttrsToList (
-            _libraryName: libraryCfg:
-            concatMapStringsSep "\n" (path: ''
-              mkdir -p "${path}"
-              echo "Created path: ${path}"
-            '') libraryCfg.paths
-          ) libraries
-        )}
 
         source ${authUtil.authScript}
 

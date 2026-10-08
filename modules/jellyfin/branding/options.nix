@@ -1,22 +1,13 @@
 {
-  config,
   lib,
   ...
 }:
 with lib;
 {
-  options.nixflix.jellyfin.branding = {
+  options.services.jellyfin.branding = {
     customCss = mkOption {
       type = types.lines;
-      default =
-        if config.nixflix.theme.enable then
-          ''@import url("https://theme-park.dev/css/base/jellyfin/${config.nixflix.theme.name}.css");''
-        else
-          "";
-      defaultText = literalExpression ''
-        if config.nixflix.theme.enable
-        then '''@import url("https://theme-park.dev/css/base/jellyfin/$${config.nixflix.theme.name}.css");'''
-        else "";'';
+      default = "";
       description = "Custom CSS to be injected into the web client.";
     };
 
@@ -34,6 +25,7 @@ with lib;
 
     splashscreenLocation = mkOption {
       type = with types; either path str;
+      default = "";
       description = "Location of the splashscreen image. Custom images should be in a 16x9 aspect ratio at a minimum size of 1920x1080.";
     };
   };

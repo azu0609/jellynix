@@ -7,8 +7,7 @@
 with lib;
 let
   secrets = import ../../lib/secrets { inherit lib; };
-  inherit (config) nixflix;
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
 
   waitForApiScript = import ./waitForApiScript.nix {
     inherit pkgs;
@@ -16,16 +15,20 @@ let
   };
 in
 {
-  config = mkIf (nixflix.enable && cfg.enable) {
+  config = mkIf (cfg.enable && cfg.declarative.enable) {
     systemd.services.jellyfin-api-key = {
       description = "Inject Jellyfin API key into database";
       after = [ "jellyfin.service" ];
+      # Do not use Requires/PartOf: this helper stops Jellyfin while writing
+      # the database and must survive that stop.
+      wants = [ "jellyfin.service" ];
       wantedBy = [ "multi-user.target" ];
 
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
         User = "root";
+        TimeoutStartSec = 300;
         ExecStartPre = waitForApiScript;
         ExecStartPost = waitForApiScript;
       };

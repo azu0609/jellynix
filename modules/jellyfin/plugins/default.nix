@@ -6,8 +6,7 @@
 }:
 with lib;
 let
-  inherit (config) nixflix;
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
 
   pluginResolution = import ./resolvePlugins.nix {
     inherit lib pkgs;
@@ -33,35 +32,17 @@ in
     ./fromJson.nix
   ];
 
-  config = mkIf (nixflix.enable && cfg.enable) {
+  config = mkIf (cfg.enable && cfg.declarative.enable) {
     warnings = pluginResolution.resolutionWarnings;
-
-    nixflix.jellyfin = {
-      plugins.AniDB = mkIf config.nixflix.sonarr-anime.enable {
-        config = {
-          TitlePreference = mkDefault "Localized";
-          OriginalTitlePreference = mkDefault "JapaneseRomaji";
-          IgnoreSeason = mkDefault false;
-          TitleSimilarityThreshold = mkDefault "50";
-          MaxGenres = mkDefault "5";
-          TidyGenreList = mkDefault true;
-          TitleCaseGenres = mkDefault false;
-          AnimeDefaultGenre = mkDefault "Anime";
-          AniDbRateLimit = mkDefault "2000";
-          MaxCacheAge = mkDefault "7";
-          AniDbReplaceGraves = mkDefault true;
-        };
-      };
-    };
 
     assertions = [
       {
         assertion = all (pluginCfg: pluginCfg.package != null) (attrValues configuredEnabledPlugins);
-        message = "nixflix.jellyfin.plugins: enabled plugins must define `package`. Use `nixflix.lib.jellyfinPlugins.fromRepo` for repository-backed plugins.";
+        message = "services.jellyfin.plugins: enabled plugins must define `package`. Use `nixflix.lib.jellyfinPlugins.fromRepo` for repository-backed plugins.";
       }
       {
         assertion = length packagePluginDirNames == length (unique packagePluginDirNames);
-        message = "nixflix.jellyfin.plugins contains duplicate package-managed plugin directory names.";
+        message = "services.jellyfin.plugins contains duplicate package-managed plugin directory names.";
       }
     ];
   };

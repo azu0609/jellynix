@@ -6,8 +6,7 @@
 }:
 with lib;
 let
-  inherit (config) nixflix;
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
 
   util = import ../util.nix { inherit lib; };
   mkSecureCurl = import ../../../lib/mk-secure-curl.nix { inherit lib pkgs; };
@@ -47,7 +46,7 @@ in
 {
   imports = [ ./options.nix ];
 
-  config = mkIf (nixflix.enable && cfg.enable) {
+  config = mkIf (cfg.enable && cfg.declarative.enable) {
     systemd.services.jellyfin-system-config = {
       description = "Configure Jellyfin System Settings via API";
       after = [ "jellyfin-setup-wizard.service" ];
@@ -57,6 +56,7 @@ in
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        TimeoutStartSec = 300;
         ExecStartPre = waitForApiScript;
       };
 

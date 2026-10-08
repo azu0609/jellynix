@@ -4,60 +4,15 @@ let
   secrets = import ../../../lib/secrets { inherit lib; };
 in
 {
-  options.nixflix.jellyfin = {
-
-    openFirewall = mkOption {
-      type = types.bool;
-      default = false;
-      description = ''
-        Open ports in the firewall for Jellyfin.
-        TCP ports 8096 and 8920, UDP ports 1900 and 7359.
-      '';
-    };
-
-    subdomain = mkOption {
-      type = types.str;
-      default = "jellyfin";
-      description = "Subdomain prefix for reverse proxy.";
-    };
-
-    reverseProxy = {
-      expose = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Whether to expose Jellyfin via the reverse proxy.";
-      };
-    };
-
-    vpn = {
-      enable = mkOption {
-        type = types.bool;
-        default = false;
-        defaultText = literalExpression "config.nixflix.vpn.enable";
-        description = ''
-          Whether to route Jellyfin traffic through the VPN.
-
-          When `false`, Jellyfin bypasses the VPN.
-          When `true`, Jellyfin is confined to the WireGuard network namespace (requires nixflix.vpn.enable = true).
-        '';
-      };
-
-      namespace = mkOption {
-        type = types.str;
-        default = config.nixflix.vpn.namespace;
-        defaultText = literalExpression "config.nixflix.vpn.namespace";
-        description = "Name of the VPN network namespace to confine Jellyfin to when `vpn.enable = true`.";
-      };
-    };
+  options.services.jellyfin = {
 
     connectionAddress = mkOption {
       type = types.str;
-      readOnly = true;
       default =
-        if config.nixflix.jellyfin.network.localNetworkAddresses == [ ] then
+        if config.services.jellyfin.network.localNetworkAddresses == [ ] then
           "127.0.0.1"
         else
-          builtins.head config.nixflix.jellyfin.network.localNetworkAddresses;
+          builtins.head config.services.jellyfin.network.localNetworkAddresses;
       description = "Address for connecting to this service.";
     };
 
@@ -151,26 +106,13 @@ in
 
       knownProxies = mkOption {
         type = types.listOf types.str;
-        default = if config.nixflix.reverseProxy.enable then [ "127.0.0.1" ] else [ ];
+        default = [ ];
         description = "List of IP addresses or hostnames of known proxies used when connecting to your Jellyfin instance. This is required to make proper use of 'X-Forwarded-For' headers.";
       };
 
       localNetworkAddresses = mkOption {
         type = types.listOf types.str;
-        default =
-          if config.nixflix.vpn.enable && config.nixflix.jellyfin.vpn.enable then
-            [
-              config.vpnNamespaces.${config.nixflix.jellyfin.vpn.namespace}.namespaceAddress
-            ]
-          else if config.nixflix.reverseProxy.enable && !config.nixflix.jellyfin.vpn.enable then
-            [ "127.0.0.1" ]
-          else
-            [ ];
-        defaultText = literalExpression ''
-          if (config.nixflix.reverseProxy.enable && !config.nixflix.jellyfin.vpn.enable)
-          then [ "127.0.0.1" ]
-          else [ ]
-        '';
+        default = [ ];
         description = "Override the local IP address for the HTTP server. If left empty, the server will bind to all available addresses.";
       };
 
@@ -218,10 +160,4 @@ in
     };
   };
 
-  config.assertions = [
-    {
-      assertion = config.nixflix.jellyfin.vpn.enable -> config.nixflix.vpn.enable;
-      message = "Cannot enable VPN routing for Jellyfin (nixflix.jellyfin.vpn.enable = true) when VPN is not enabled. Please set nixflix.vpn.enable = true.";
-    }
-  ];
 }

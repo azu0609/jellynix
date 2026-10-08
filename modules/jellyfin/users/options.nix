@@ -452,7 +452,7 @@ let
 in
 {
   # Based on: https://github.com/jellyfin/jellyfin/blob/master/MediaBrowser.Model/Configuration/UserConfiguration.cs
-  options.nixflix.jellyfin.users = mkOption {
+  options.services.jellyfin.users = mkOption {
     description = ''
       User configuration.
 

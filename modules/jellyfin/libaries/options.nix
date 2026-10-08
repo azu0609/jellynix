@@ -120,7 +120,7 @@ let
 
       enableRealtimeMonitor = mkOption {
         type = types.bool;
-        default = !config.nixflix.notif.jellyfin.enable;
+        default = true;
         description = "Monitor the library folders for file changes in real-time";
       };
 
@@ -237,11 +237,11 @@ let
       subtitleFetcherOrder = mkOption {
         type = types.listOf types.str;
         default =
-          lib.optional config.nixflix.jellyfin.plugins."Open Subtitles".enable "Open Subtitles"
-          ++ lib.optional config.nixflix.jellyfin.plugins."subbuzz".enable "subbuzz";
+          lib.optional config.services.jellyfin.plugins."Open Subtitles".enable "Open Subtitles"
+          ++ lib.optional config.services.jellyfin.plugins."subbuzz".enable "subbuzz";
         defaultText = literalExpression ''
-          lib.optional config.nixflix.jellyfin.plugins."Open Subtitles".enable "Open Subtitles"
-          ++ lib.optional config.nixflix.jellyfin.plugins."subbuzz".enable "subbuzz";
+          lib.optional config.services.jellyfin.plugins."Open Subtitles".enable "Open Subtitles"
+          ++ lib.optional config.services.jellyfin.plugins."subbuzz".enable "subbuzz";
         '';
         description = "Order in which to use subtitle fetchers";
       };
@@ -388,18 +388,10 @@ let
   };
 in
 {
-  options.nixflix.jellyfin.libraries = mkOption {
+  options.services.jellyfin.libraries = mkOption {
     description = ''
-      Jellyfin media libraries to manage declaratively.
-
-      By default, libraries are automatically created for enabled Arr services:
-
-      - Shows: Created when Sonarr is enabled
-      - Movies: Created when Radarr is enabled
-      - Music: Created when Lidarr is enabled
-      - Anime: Created when either Sonarr anime or Radarr anime is enabled
-
-      Default libraries can be removed with the following: `nixflix.jellyfin.libraries.Movies = lib.mkForce {};`
+      Jellyfin media libraries to manage declaratively. Media paths and their
+      permissions must be provisioned by the host.
     '';
     type = types.attrsOf (types.nullOr libraryModule);
     default = { };
@@ -424,183 +416,4 @@ in
     };
   };
 
-  config.nixflix.jellyfin.libraries = {
-    Shows = mkIf (config.nixflix.sonarr.enable or false) {
-      collectionType = "tvshows";
-      paths = config.nixflix.sonarr.mediaDirs;
-
-      typeOptions = [
-        {
-          type = "Series";
-          imageFetchers = [
-            "TheMovieDb"
-          ];
-          imageFetcherOrder = [
-            "TheMovieDb"
-          ];
-          metadataFetchers = [
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-          metadataFetcherOrder = [
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-        }
-        {
-          type = "Season";
-          imageFetchers = [
-            "TheMovieDb"
-          ];
-          imageFetcherOrder = [
-            "TheMovieDb"
-          ];
-          metadataFetchers = [
-            "TheMovieDb"
-          ];
-          metadataFetcherOrder = [
-            "TheMovieDb"
-          ];
-        }
-        {
-          type = "Episode";
-          imageFetchers = [
-            "TheMovieDb"
-            "The Open Movie Database"
-            "Embedded Image Extractor"
-            "Screen Grabber"
-          ];
-          imageFetcherOrder = [
-            "TheMovieDb"
-            "The Open Movie Database"
-            "Embedded Image Extractor"
-            "Screen Grabber"
-          ];
-          metadataFetchers = [
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-          metadataFetcherOrder = [
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-        }
-      ];
-    };
-
-    Anime = mkIf (config.nixflix.sonarr-anime.enable or false) {
-      collectionType = "tvshows";
-      paths = config.nixflix.sonarr-anime.mediaDirs;
-
-      typeOptions = [
-        {
-          type = "Series";
-          imageFetchers = [
-            "AniDB"
-            "AniSearch"
-            "TheMovieDb"
-          ];
-          imageFetcherOrder = [
-            "AniDB"
-            "AniSearch"
-            "TheMovieDb"
-          ];
-          metadataFetchers = [
-            "AniDB"
-            "AniSearch"
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-          metadataFetcherOrder = [
-            "AniDB"
-            "AniSearch"
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-        }
-        {
-          type = "Season";
-          imageFetchers = [
-            "AniDB"
-            "AniSearch"
-            "TheMovieDb"
-          ];
-          imageFetcherOrder = [
-            "AniDB"
-            "AniSearch"
-            "TheMovieDb"
-          ];
-          metadataFetchers = [
-            "AniDB"
-            "TheMovieDb"
-          ];
-          metadataFetcherOrder = [
-            "AniDB"
-            "TheMovieDb"
-          ];
-        }
-        {
-          type = "Episode";
-          imageFetchers = [
-            "TheMovieDb"
-            "The Open Movie Database"
-            "Embedded Image Extractor"
-            "Screen Grabber"
-          ];
-          imageFetcherOrder = [
-            "TheMovieDb"
-            "The Open Movie Database"
-            "Embedded Image Extractor"
-            "Screen Grabber"
-          ];
-          metadataFetchers = [
-            "AniDB"
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-          metadataFetcherOrder = [
-            "AniDB"
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-        }
-      ];
-    };
-
-    Movies = mkIf (config.nixflix.radarr.enable or false) {
-      collectionType = "movies";
-      paths = config.nixflix.radarr.mediaDirs;
-
-      typeOptions = [
-        {
-          type = "Movie";
-          imageFetchers = [
-            "TheMovieDb"
-            "The Open Movie Database"
-            "Embedded Image Extractor"
-            "Screen Grabber"
-          ];
-          imageFetcherOrder = [
-            "TheMovieDb"
-            "The Open Movie Database"
-            "Embedded Image Extractor"
-            "Screen Grabber"
-          ];
-          metadataFetchers = [
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-          metadataFetcherOrder = [
-            "TheMovieDb"
-            "The Open Movie Database"
-          ];
-        }
-      ];
-    };
-
-    Music = mkIf (config.nixflix.lidarr.enable or false) {
-      collectionType = "music";
-      paths = config.nixflix.lidarr.mediaDirs;
-    };
-  };
 }

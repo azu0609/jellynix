@@ -44,240 +44,6 @@ let
   '';
 in
 {
-  # Test that nixflix.sonarr options generate correct systemd units
-  sonarr-service-generation =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            sonarr = {
-              enable = true;
-              user = "testuser";
-              config = {
-                hostConfig = {
-                  port = 8989;
-                  username = "admin";
-                  password._secret = "/run/secrets/sonarr-pass";
-                };
-                apiKey._secret = "/run/secrets/sonarr-api";
-                rootFolders = [ { path = "/media/tv"; } ];
-              };
-            };
-          };
-        }
-      ];
-      systemdUnits = config.config.systemd.services;
-      hasAllServices =
-        systemdUnits ? sonarr && systemdUnits ? sonarr-config && systemdUnits ? sonarr-rootfolders;
-    in
-    assertTest "sonarr-service-generation" hasAllServices;
-
-  # Test that nixflix.sonarr-anime options generate correct systemd units
-  sonarr-anime-service-generation =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            sonarr-anime = {
-              enable = true;
-              user = "testuser";
-              config = {
-                hostConfig = {
-                  port = 8990;
-                  username = "admin";
-                  password._secret = "/run/secrets/sonarr-pass";
-                };
-                apiKey._secret = "/run/secrets/sonarr-api";
-                rootFolders = [ { path = "/media/anime"; } ];
-              };
-            };
-          };
-        }
-      ];
-      systemdUnits = config.config.systemd.services;
-      hasAllServices =
-        systemdUnits ? sonarr-anime
-        && systemdUnits ? sonarr-anime-config
-        && systemdUnits ? sonarr-anime-rootfolders;
-    in
-    assertTest "sonarr-anime-service-generation" hasAllServices;
-
-  # Test that radarr options generate correct systemd units
-  radarr-service-generation =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            radarr = {
-              enable = true;
-              user = "testuser";
-              config = {
-                hostConfig = {
-                  port = 7878;
-                  username = "admin";
-                  password._secret = "/run/secrets/radarr-pass";
-                };
-                apiKey._secret = "/run/secrets/radarr-api";
-                rootFolders = [ { path = "/media/movies"; } ];
-              };
-            };
-          };
-        }
-      ];
-      systemdUnits = config.config.systemd.services;
-      hasAllServices =
-        systemdUnits ? radarr && systemdUnits ? radarr-config && systemdUnits ? radarr-rootfolders;
-    in
-    assertTest "radarr-service-generation" hasAllServices;
-
-  # Test that prowlarr with indexers generates correct systemd units
-  prowlarr-service-generation =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            prowlarr = {
-              enable = true;
-              config = {
-                hostConfig = {
-                  port = 9696;
-                  username = "admin";
-                  password._secret = "/run/secrets/prowlarr-pass";
-                };
-                apiKey._secret = "/run/secrets/prowlarr-api";
-                indexers = [
-                  {
-                    name = "1337x";
-                    apiKey._secret = "/run/secrets/1337x-api";
-                  }
-                  {
-                    name = "My Tracker";
-                    schemaName = "Generic Torznab";
-                    trackerId._secret = "/run/secrets/tracker-id";
-                  }
-                  {
-                    name = "Other Tracker";
-                    schemaName = "Generic Torznab";
-                    baseUrl = "http://127.0.0.1:9117/other";
-                  }
-                ];
-              };
-            };
-          };
-        }
-      ];
-      systemdUnits = config.config.systemd.services;
-      indexersScript = systemdUnits.prowlarr-indexers.script;
-    in
-    pkgs.runCommand "unit-test-prowlarr-service-generation" { } ''
-      ${check "prowlarr services are generated" (
-        systemdUnits ? prowlarr && systemdUnits ? prowlarr-config && systemdUnits ? prowlarr-indexers
-      )}
-      ${check "schemaName is used for schema lookup" (
-        lib.hasInfix "--arg name 'Generic Torznab' '.[] | select(.name == $name)" indexersScript
-      )}
-      ${check "display names are applied to indexers from the same schema" (
-        lib.hasInfix "--arg name 'My Tracker' '.name = $name" indexersScript
-        && lib.hasInfix "--arg name 'Other Tracker' '.name = $name" indexersScript
-      )}
-      ${check "secrets are read at runtime" (
-        lib.hasInfix "--rawfile nixflixSecret1Content /run/secrets/1337x-api" indexersScript
-        && lib.hasInfix "--rawfile nixflixSecret0Content /run/secrets/tracker-id" indexersScript
-      )}
-      echo 'PASS: prowlarr-service-generation' > $out
-    '';
-
-  # Test that prowlarr with indexers generates correct systemd units
-  sabnzbd-service-generation =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            usenetClients.sabnzbd = {
-              enable = true;
-              downloadsDir = "/downloads/usenet";
-              settings = {
-                misc = {
-                  api_key._secret = pkgs.writeText "sabnzbd-apikey" "testapikey123456789abcdef";
-                  nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "testnzbkey123456789abcdef";
-                  port = 8080;
-                  host = "127.0.0.1";
-                  url_base = "/sabnzbd";
-                  ignore_samples = true;
-                  direct_unpack = false;
-                  article_tries = 5;
-                };
-                servers = [
-                  {
-                    name = "TestServer";
-                    host = "news.example.com";
-                    port = 563;
-                    username._secret = pkgs.writeText "eweka-username" "testuser";
-                    password._secret = pkgs.writeText "eweka-password" "testpass123";
-                    connections = 10;
-                    ssl = true;
-                    priority = 0;
-                  }
-                ];
-                categories = [
-                  {
-                    name = "tv";
-                    dir = "tv";
-                    priority = 0;
-                    pp = 3;
-                    script = "None";
-                  }
-                  {
-                    name = "movies";
-                    dir = "movies";
-                    priority = 1;
-                    pp = 2;
-                    script = "None";
-                  }
-                ];
-              };
-            };
-          };
-        }
-      ];
-      systemdUnits = config.config.systemd.services;
-      hasAllServices = systemdUnits ? sabnzbd;
-    in
-    assertTest "sabnzbd-service-generation" hasAllServices;
-
-  # Test that seerr generates services with a remote Jellyfin (no local jellyfin)
-  seerr-remote-jellyfin =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            seerr = {
-              enable = true;
-              apiKey._secret = "/run/secrets/seerr-api";
-              jellyfin = {
-                adminUsername = "remoteadmin";
-                adminPassword = "remotepassword";
-              };
-            };
-          };
-        }
-      ];
-      systemdUnits = config.config.systemd.services;
-    in
-    assertTest "seerr-remote-jellyfin" (
-      systemdUnits ? seerr
-      && systemdUnits ? seerr-setup
-      && systemdUnits ? seerr-jellyfin
-      && systemdUnits ? seerr-libraries
-      && systemdUnits ? seerr-user-settings
-    );
-
   jellyfin-plugin-package-service-generation =
     let
       plugin = pkgs.runCommand "test-plugin-1.0.0" { } ''
@@ -286,10 +52,9 @@ in
       '';
       config = evalConfig [
         {
-          nixflix = {
-            enable = true;
-
+          services = {
             jellyfin = {
+              declarative.enable = true;
               enable = true;
               plugins."Test Plugin".package = plugin;
               users.admin = {
@@ -302,7 +67,7 @@ in
       ];
       systemdUnits = config.config.systemd.services;
       tmpfilesSettings = config.config.systemd.tmpfiles.settings;
-      pluginPath = "${config.config.nixflix.jellyfin.dataDir}/plugins";
+      pluginPath = "${config.config.services.jellyfin.dataDir}/plugins";
     in
     pkgs.runCommand "unit-test-jellyfin-plugin-package-service-generation" { } ''
       ${check "plugin service exists" (systemdUnits ? jellyfin-plugins)}
@@ -319,10 +84,9 @@ in
         let
           config = evalConfig [
             {
-              nixflix = {
-                enable = true;
-
+              services = {
                 jellyfin = {
+                  declarative.enable = true;
                   enable = true;
                   plugins."Broken Plugin" = {
                     package = {
@@ -364,10 +128,9 @@ in
       );
       config = evalConfig [
         {
-          nixflix = {
-            enable = true;
-
+          services = {
             jellyfin = {
+              declarative.enable = true;
               enable = true;
               system.pluginRepositories = lib.mkForce {
                 "Test Repo" = {
@@ -426,10 +189,9 @@ in
       );
       config = evalConfig [
         {
-          nixflix = {
-            enable = true;
-
+          services = {
             jellyfin = {
+              declarative.enable = true;
               enable = true;
               system.pluginRepositories = lib.mkForce {
                 "LAPSE Repo" = {
@@ -501,10 +263,9 @@ in
         let
           config = evalConfig [
             {
-              nixflix = {
-                enable = true;
-
+              services = {
                 jellyfin = {
+                  declarative.enable = true;
                   enable = true;
                   apiKey = "test-api-key";
                   system.pluginRepositories = lib.mkForce {
@@ -539,246 +300,13 @@ in
     in
     assertTest "jellyfin-plugin-repo-ambiguity-assertion" (!result.success);
 
-  jellyfin-integration =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-
-            jellyfin = {
-              enable = true;
-              users.admin = {
-                password = "testpassword";
-                policy.isAdministrator = true;
-              };
-            };
-
-            radarr = {
-              enable = true;
-              mediaDirs = [ "/media/movies" ];
-              config = {
-                hostConfig = {
-                  port = 7878;
-                  username = "admin";
-                  password._secret = "/run/secrets/radarr-pass";
-                };
-                apiKey._secret = "/run/secrets/radarr-api";
-                rootFolders = [ { path = "/media/movies"; } ];
-              };
-            };
-
-            sonarr = {
-              enable = true;
-              mediaDirs = [ "/media/shows" ];
-              config = {
-                hostConfig = {
-                  port = 8989;
-                  username = "admin";
-                  password._secret = "/run/secrets/sonarr-pass";
-                };
-                apiKey._secret = "/run/secrets/sonarr-api";
-                rootFolders = [ { path = "/media/shows"; } ];
-              };
-            };
-
-            sonarr-anime = {
-              enable = true;
-              mediaDirs = [ "/media/anime" ];
-              config = {
-                hostConfig = {
-                  port = 8990;
-                  username = "admin";
-                  password._secret = "/run/secrets/sonarr-anime-pass";
-                };
-                apiKey._secret = "/run/secrets/sonarr-anime-api";
-                rootFolders = [ { path = "/media/anime"; } ];
-              };
-            };
-
-            lidarr = {
-              enable = true;
-              mediaDirs = [ "/media/music" ];
-              config = {
-                hostConfig = {
-                  port = 8686;
-                  username = "admin";
-                  password._secret = "/run/secrets/lidarr-pass";
-                };
-                apiKey._secret = "/run/secrets/lidarr-api";
-                rootFolders = [ { path = "/media/music"; } ];
-              };
-            };
-          };
-        }
-      ];
-
-      inherit (config.config.nixflix.jellyfin) libraries;
-    in
-    pkgs.runCommand "unit-test-jellyfin-integration" { } ''
-      ${check "Movies library exists" (libraries ? Movies)}
-      ${check "Movies library has correct collectionType" (libraries.Movies.collectionType == "movies")}
-      ${check "Movies library has correct path" (builtins.elem "/media/movies" libraries.Movies.paths)}
-
-      ${check "Shows library exists" (libraries ? Shows)}
-      ${check "Shows library has correct collectionType" (libraries.Shows.collectionType == "tvshows")}
-      ${check "Shows library has correct path" (builtins.elem "/media/shows" libraries.Shows.paths)}
-
-      ${check "Anime library exists" (libraries ? Anime)}
-      ${check "Anime library has correct collectionType" (libraries.Anime.collectionType == "tvshows")}
-      ${check "Anime library has correct path" (builtins.elem "/media/anime" libraries.Anime.paths)}
-
-      ${check "Music library exists" (libraries ? Music)}
-      ${check "Music library has correct collectionType" (libraries.Music.collectionType == "music")}
-      ${check "Music library has correct path" (builtins.elem "/media/music" libraries.Music.paths)}
-
-      echo 'PASS: jellyfin-integration' > $out
-    '';
-
-  download-clients-no-reverse-proxy =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            nginx.enable = false;
-
-            radarr = {
-              enable = true;
-              config = {
-                hostConfig = {
-                  port = 7878;
-                  username = "admin";
-                  password._secret = "/run/secrets/radarr-pass";
-                };
-                apiKey._secret = "/run/secrets/radarr-api";
-                rootFolders = [ { path = "/media/movies"; } ];
-              };
-            };
-
-            usenetClients.sabnzbd = {
-              enable = true;
-              settings.misc = {
-                api_key._secret = pkgs.writeText "sabnzbd-apikey" "testapikey123456789abcdef";
-                nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "testnzbkey123456789abcdef";
-                port = 8080;
-                url_base = "/sabnzbd";
-              };
-            };
-          };
-        }
-      ];
-      radarrCfg = config.config.nixflix.radarr;
-      sabnzbdCfg = config.config.nixflix.usenetClients.sabnzbd;
-      downloadClientsService = config.config.systemd.services."radarr-downloadclients";
-    in
-    pkgs.runCommand "unit-test-download-clients-no-reverse-proxy" { } ''
-      ${check "radarr bindAddress is 0.0.0.0 when nginx is disabled" (
-        radarrCfg.config.hostConfig.bindAddress == "0.0.0.0"
-      )}
-      ${check "radarr connectionAddress is 127.0.0.1 (not 0.0.0.0)" (
-        radarrCfg.connectionAddress == "127.0.0.1"
-      )}
-      ${check "sabnzbd connectionAddress is 127.0.0.1 (not 0.0.0.0)" (
-        sabnzbdCfg.connectionAddress == "127.0.0.1"
-      )}
-      ${check "radarr-downloadclients ExecStartPre uses connectionAddress" (
-        lib.hasInfix "127.0.0.1" downloadClientsService.serviceConfig.ExecStartPre
-      )}
-      ${check "radarr-downloadclients ExecStartPre does not use 0.0.0.0" (
-        !lib.hasInfix "0.0.0.0" downloadClientsService.serviceConfig.ExecStartPre
-      )}
-      ${check "radarr-downloadclients script uses connectionAddress" (
-        lib.hasInfix "127.0.0.1" downloadClientsService.script
-      )}
-      ${check "radarr-downloadclients script does not use 0.0.0.0" (
-        !lib.hasInfix "0.0.0.0" downloadClientsService.script
-      )}
-      echo 'PASS: download-clients-no-reverse-proxy' > $out
-    '';
-
-  notif-service-scoping =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-
-            jellyfin = {
-              enable = true;
-              apiKey = "test-jellyfin-key";
-            };
-
-            navidrome.enable = true;
-            navidrome.users.admin = {
-              userName = "admin";
-              isAdmin = true;
-              password = "testpassword";
-            };
-
-            sonarr = {
-              enable = true;
-              config = {
-                hostConfig.port = 8989;
-                apiKey._secret = "/run/secrets/sonarr-api";
-              };
-            };
-
-            radarr = {
-              enable = true;
-              config = {
-                hostConfig.port = 7878;
-                apiKey._secret = "/run/secrets/radarr-api";
-              };
-            };
-
-            lidarr = {
-              enable = true;
-              config = {
-                hostConfig.port = 8686;
-                apiKey._secret = "/run/secrets/lidarr-api";
-              };
-            };
-          };
-        }
-      ];
-      sonarrNotifications = config.config.systemd.services."sonarr-notifications";
-      radarrNotifications = config.config.systemd.services."radarr-notifications";
-      lidarrNotifications = config.config.systemd.services."lidarr-notifications";
-    in
-    pkgs.runCommand "unit-test-notif-service-scoping" { } ''
-      ${check "sonarr-notifications ExecStartPre uses connectionAddress" (
-        lib.hasInfix "127.0.0.1" sonarrNotifications.serviceConfig.ExecStartPre
-      )}
-      ${check "sonarr-notifications ExecStartPre does not use 0.0.0.0" (
-        !lib.hasInfix "0.0.0.0" sonarrNotifications.serviceConfig.ExecStartPre
-      )}
-      ${check "radarr-notifications script uses connectionAddress" (
-        lib.hasInfix "127.0.0.1" radarrNotifications.script
-      )}
-      ${check "sonarr-notifications is configured for Emby/Jellyfin" (
-        lib.hasInfix "Emby / Jellyfin" sonarrNotifications.script
-      )}
-      ${check "sonarr-notifications is NOT configured for Subsonic (Lidarr-only)" (
-        !lib.hasInfix "Subsonic" sonarrNotifications.script
-      )}
-      ${check "lidarr-notifications is configured for Emby/Jellyfin" (
-        lib.hasInfix "Emby / Jellyfin" lidarrNotifications.script
-      )}
-      ${check "lidarr-notifications is configured for Subsonic" (
-        lib.hasInfix "Subsonic" lidarrNotifications.script
-      )}
-      echo 'PASS: notif-service-scoping' > $out
-    '';
-
   jellyfin-subtitles =
     let
       config = evalConfig [
         {
-          nixflix = {
-            enable = true;
-
+          services = {
             jellyfin = {
+              declarative.enable = true;
               enable = true;
               apiKey = "test-api-key";
 
@@ -839,7 +367,7 @@ in
         }
       ];
       pluginService = config.config.systemd.services.jellyfin-plugins;
-      jellyfinCfg = config.config.nixflix.jellyfin;
+      jellyfinCfg = config.config.services.jellyfin;
     in
     pkgs.runCommand "unit-test-jellyfin-subtitles" { } ''
       ${check "jellyfin-plugins service exists" (config.config.systemd.services ? jellyfin-plugins)}
@@ -917,212 +445,6 @@ in
 
       echo 'PASS: jellyfin-subtitles' > $out
     '';
-
-  # LoadCredential replaces the old -env root service; verify the generated unit
-  arr-load-credential =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            sonarr = {
-              enable = true;
-              config = {
-                apiKey._secret = "/run/secrets/sonarr-api";
-                hostConfig = {
-                  port = 8989;
-                  username = "admin";
-                  password._secret = "/run/secrets/sonarr-pass";
-                };
-              };
-            };
-          };
-        }
-      ];
-      services = config.config.systemd.services;
-      svc = services.sonarr.serviceConfig;
-    in
-    pkgs.runCommand "unit-test-arr-load-credential" { } ''
-      ${check "sonarr-env service no longer exists" (!services ? sonarr-env)}
-      ${check "LoadCredential set for secret-ref apiKey" (
-        builtins.elem "apiKey:/run/secrets/sonarr-api" svc.LoadCredential
-      )}
-      ${check "no EnvironmentFile" (!svc ? EnvironmentFile)}
-      echo 'PASS: arr-load-credential' > $out
-    '';
-
-  # hostConfig assertion: username and password must both be set or both be null
-  hostconfig-username-requires-password =
-    let
-      result = builtins.tryEval (
-        let
-          config = evalConfig [
-            {
-              nixflix = {
-                enable = true;
-                sonarr = {
-                  enable = true;
-                  config.hostConfig = {
-                    port = 8989;
-                    username = "admin";
-                    # password left at default null
-                  };
-                };
-              };
-            }
-          ];
-        in
-        config.config.system.build.toplevel.drvPath
-      );
-    in
-    assertTest "hostconfig-username-requires-password" (!result.success);
-
-  hostconfig-password-requires-username =
-    let
-      result = builtins.tryEval (
-        let
-          config = evalConfig [
-            {
-              nixflix = {
-                enable = true;
-                sonarr = {
-                  enable = true;
-                  config.hostConfig = {
-                    port = 8989;
-                    username = null;
-                    password._secret = "/run/secrets/sonarr-pass";
-                  };
-                };
-              };
-            }
-          ];
-        in
-        config.config.system.build.toplevel.drvPath
-      );
-    in
-    assertTest "hostconfig-password-requires-username" (!result.success);
-
-  # lidarr metadata/quality profile assertions: at least one profile must be present
-  lidarr-qualityprofiles-empty-assertion =
-    let
-      result = builtins.tryEval (
-        let
-          config = evalConfig [
-            {
-              nixflix = {
-                enable = true;
-                lidarr = {
-                  enable = true;
-                  config.qualityProfiles = [ ];
-                };
-              };
-            }
-          ];
-        in
-        config.config.system.build.toplevel.drvPath
-      );
-    in
-    assertTest "lidarr-qualityprofiles-empty-assertion" (!result.success);
-
-  lidarr-metadataprofiles-empty-assertion =
-    let
-      result = builtins.tryEval (
-        let
-          config = evalConfig [
-            {
-              nixflix = {
-                enable = true;
-                lidarr = {
-                  enable = true;
-                  config.metadataProfiles = [ ];
-                };
-              };
-            }
-          ];
-        in
-        config.config.system.build.toplevel.drvPath
-      );
-    in
-    assertTest "lidarr-metadataprofiles-empty-assertion" (!result.success);
-
-  # https://github.com/kiriwalawren/nixflix/issues/270
-  # settings.auth/settings.server must mirror config.hostConfig so that the
-  # environment variables actually reflect what the user configured there.
-  hostconfig-drives-settings-auth =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            radarr = {
-              enable = true;
-              config = {
-                hostConfig = {
-                  port = 7878;
-                  urlBase = "/radarr";
-                  authenticationMethod = "external";
-                  authenticationRequired = "disabledForLocalAddresses";
-                  username = "admin";
-                  password._secret = "/run/secrets/radarr-pass";
-                };
-                apiKey._secret = "/run/secrets/radarr-api";
-                rootFolders = [ { path = "/media/movies"; } ];
-              };
-            };
-          };
-        }
-      ];
-      radarrCfg = config.config.nixflix.radarr;
-      environment = config.config.systemd.services.radarr.environment;
-    in
-    pkgs.runCommand "unit-test-hostconfig-drives-settings-auth" { } ''
-      ${check "settings.auth.method mirrors hostConfig.authenticationMethod" (
-        radarrCfg.settings.auth.method == "External"
-      )}
-      ${check "settings.auth.required mirrors hostConfig.authenticationRequired" (
-        radarrCfg.settings.auth.required == "DisabledForLocalAddresses"
-      )}
-      ${check "settings.server.port mirrors hostConfig.port" (radarrCfg.settings.server.port == 7878)}
-      ${check "settings.server.urlBase mirrors hostConfig.urlBase" (
-        radarrCfg.settings.server.urlBase == "/radarr"
-      )}
-      ${check "RADARR__AUTH__METHOD env var reflects hostConfig" (
-        environment.RADARR__AUTH__METHOD == "External"
-      )}
-      ${check "RADARR__AUTH__REQUIRED env var reflects hostConfig" (
-        environment.RADARR__AUTH__REQUIRED == "DisabledForLocalAddresses"
-      )}
-      echo 'PASS: hostconfig-drives-settings-auth' > $out
-    '';
-
-  # A user should be able to override settings.auth directly (normal priority,
-  # no lib.mkForce needed) since the hostConfig-derived value is only mkDefault.
-  settings-auth-overrides-hostconfig =
-    let
-      config = evalConfig [
-        {
-          nixflix = {
-            enable = true;
-            radarr = {
-              enable = true;
-              config = {
-                hostConfig = {
-                  port = 7878;
-                  authenticationMethod = "forms";
-                  username = "admin";
-                  password._secret = "/run/secrets/radarr-pass";
-                };
-                apiKey._secret = "/run/secrets/radarr-api";
-                rootFolders = [ { path = "/media/movies"; } ];
-              };
-              settings.auth.method = "External";
-            };
-          };
-        }
-      ];
-      radarrCfg = config.config.nixflix.radarr;
-    in
-    assertTest "settings-auth-overrides-hostconfig" (radarrCfg.settings.auth.method == "External");
 
   nested-secret-in-list-jq-filter =
     let

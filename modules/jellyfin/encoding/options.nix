@@ -6,7 +6,7 @@
 }:
 with lib;
 {
-  options.nixflix.jellyfin.encoding = {
+  options.services.jellyfin.encoding = {
     enableHardwareEncoding = mkOption {
       type = types.bool;
       default = true;
@@ -37,8 +37,8 @@ with lib;
 
     transcodingTempPath = mkOption {
       type = types.str;
-      default = "${config.nixflix.jellyfin.cacheDir}/transcodes";
-      defaultText = literalExpression ''"''${config.nixflix.jellyfin.cacheDir}/transcodes"'';
+      default = "${config.services.jellyfin.cacheDir}/transcodes";
+      defaultText = literalExpression ''"''${config.services.jellyfin.cacheDir}/transcodes"'';
       description = "Path for temporary transcoded files when streaming";
     };
 

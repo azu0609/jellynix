@@ -6,8 +6,7 @@
 }:
 with lib;
 let
-  inherit (config) nixflix;
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
 
   util = import ../util.nix { inherit lib; };
 
@@ -16,7 +15,7 @@ in
 {
   imports = [ ./options.nix ];
 
-  config = mkIf (nixflix.enable && cfg.enable) {
+  config = mkIf (cfg.enable && cfg.declarative.enable && cfg.declarative.manageEncoding) {
     systemd.tmpfiles.settings."10-jellyfin" = mkIf (cfg.encoding.transcodingTempPath != "") {
       "${cfg.encoding.transcodingTempPath}".d = {
         inherit (cfg) user group;
@@ -31,7 +30,7 @@ in
         encodingXmlContent
       ];
 
-      serviceConfig.ExecStartPre = [
+      serviceConfig.ExecStartPre = mkAfter [
         (pkgs.writeShellScript "jellyfin-setup-encoding-config" ''
           set -eu
 

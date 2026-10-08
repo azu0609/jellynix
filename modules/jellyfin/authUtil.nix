@@ -6,7 +6,7 @@
 let
   secrets = import ../../lib/secrets { inherit lib; };
 
-  tokenFile = "/run/jellyfin/auth-token";
+  tokenFile = "/run/jellyfin-config/auth-token";
   token = {
     _secret = tokenFile;
   };

@@ -1,145 +1,46 @@
-<h1 align="center">
-  <img src="https://raw.githubusercontent.com/kiriwalawren/nixflix/refs/heads/main/docs/assets/logo.svg" width="250px"/>
-  <div>Nixflix</div>
-  <div>
-    <a href="https://github.com/kiriwalawren/nixflix/issues">
-        <img src="https://img.shields.io/github/issues/kiriwalawren/nixflix?color=f5a97f&labelColor=303446&style=for-the-badge">
-    </a>
-    <a href="https://github.com/kiriwalawren/nixflix/stargazers">
-        <img src="https://img.shields.io/github/stars/kiriwalawren/nixflix?color=c6a0f6&labelColor=303446&style=for-the-badge">
-    </a>
-    <a href="https://github.com/kiriwalawren/nixflix">
-        <img src="https://img.shields.io/github/repo-size/kiriwalawren/nixflix?color=ea999c&labelColor=303446&style=for-the-badge">
-    </a>
-    <a href="https://github.com/kiriwalawren/nixflix/blob/main/LICENSE">
-        <img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MPL-2.0&logoColor=ca9ee6&colorA=313244&colorB=a6da95"/>
-    </a>
-    <a href="https://nixos.org">
-        <img src="https://img.shields.io/badge/NixOS-unstable-blue.svg?style=for-the-badge&labelColor=303446&logo=NixOS&logoColor=white&color=91D7E3">
-    </a>
-  </div>
-  <a href="https://builtwithnix.org">
-      <img src="https://builtwithnix.org/badge.svg"/>
-  </a>
-</h1>
+# Nixflix — Jellyfin only
 
-Nixflix is a declarative media server configuration manager for NixOS. The aim of the project is to automate
-all of the connective tissue required to get Starr and Jellyfin services ([Sonarr](https://github.com/Sonarr/Sonarr), [Radarr](https://github.com/Radarr/Radarr), [Lidarr](https://github.com/Lidarr/Lidarr), [Prowlarr](https://github.com/Prowlarr/Prowlarr), [Jellyfin](https://github.com/jellyfin/jellyfin), [Seerr](https://github.com/seerr-team/seerr)) working
-together. I want users to be able to configure this module and it just works.
+A Jellyfin-only fork of [kiriwalawren/nixflix](https://github.com/kiriwalawren/nixflix).
+It retains the declarative system, network, encoding, branding, metadata, user,
+library and plugin configuration, including pinned plugin packages and runtime
+`_secret` references.
 
-## Why Nixflix?
+Import `nixosModules.default` (also exported as `nixosModules.jellyfin`):
 
-Dreading the thought of configuring a media server from scratch. Again...
+```nix
+{ inputs, ... }: {
+  imports = [ inputs.nixflix.nixosModules.default ];
 
-Nixflix makes it so you never have to again!
-
-Managing media server configuration can be very painful:
-
-- **No version control** for settings
-- **Tedious navigation** through UI systems
-- **And annoying interservice** Configuration
-
-All of these services have APIs, surely we can use this to automate the whole thing.
-
-Nixflix is:
-
-- ✅ **Opinionated** — Don't you hate having to think for yourself?
-- ✅ **API-based** — Nixflix uses official REST APIs of each service (with a couple minor exceptions)
-- ✅ **Idempotent** — All services safely execute repeatedly
-- ✅ **Commanding** — Your code is _the_ source of truth, no need to fear drift
-
-## Features
-
-- **Media Server Stack**: Pre-configured modules for Sonarr, Radarr, Lidarr, and Prowlarr
-- **Declarative API Configuration**: Configure services declaratively via NixOS options, automatically applied through their REST APIs
-- **PostgreSQL Integration**: Optional PostgreSQL backend for all Arr services
-- **WireGuard VPN Integration**: Built-in support for Wireguard VPN with kill switch and custom DNS
-- **Flexible Directory Management**: Configurable media and state directories with automatic setup
-- **Service Dependencies**: Configure custom systemd service dependencies
-- **Reverse Proxy Support**: Configurable nginx or Caddy integration for all services, with per-service opt-out
-- **Unified Theming**: All supported services can be themed to look the same, powered by [theme.park](https://docs.theme-park.dev/)
-- [**TRaSH Guides**](https://trash-guides.info): Default configuration follows TRaSH guidelines
-
-### Upcoming Features
-
-- [ ] Better music tooling
-
-## Documentation
-
-Check out the [documentation](https://kiriwalawren.github.io/nixflix/) to get started.
-
-## Services
-
-### Starr Stack
-
-All Arr services (Sonarr, Radarr, Lidarr, Prowlarr) support:
-
-- API-based configuration
-- PostgreSQL integration
-- Reverse proxy (nginx or Caddy)
-- Automatic directory creation
-- Root folder management
-- Custom media directories
-
-### Jellyfin
-
-- Basic server management
-- Libraries are automatically configured based on selected media managers
-- Plugin management
-- Subtitle downloader management
-
-### Seerr
-
-- Media request management
-- Automatic integration with Starr services
-- Automatic integration with Jellyfin libraries
-
-### Navidrome
-
-- Music Server
-- Supports OpenSubsonic API
-
-### SABnzbd
-
-- Automatic integration with Starr services
-
-### qBittorrent
-
-- Automatic integration with Starr services
-
-### Soulseek (slskd)
-
-- Automatic integration with Aurral (comming soon)
-
-### WireGuard VPN
-
-- Generic WireGuard support
-- Kill switch
-
-### Maintainerr
-
-- Automatic cleanup of old media
-
-## Development
-
-Enter development shell:
-
-```bash
-nix develop
+  services.jellyfin = {
+    enable = true;
+    declarative.enable = true;
+    apiKey._secret = "/run/secrets/jellyfin-api-key";
+    users.admin = {
+      password._secret = "/run/secrets/jellyfin-admin-password";
+      policy.isAdministrator = true;
+    };
+    libraries.Music = {
+      collectionType = "music";
+      paths = [ "/mnt/media/Music" ];
+    };
+  };
+}
 ```
 
-Format code:
+The nixpkgs Jellyfin module owns the daemon, package, user/group, base directories,
+firewall and hardware-device access. This module does not create media directories,
+assign UIDs/GIDs, grant supplementary groups, or configure a reverse proxy, VPN or
+other media services. Provision library paths and permissions in the host config.
+`openFirewall` retains nixpkgs' default-port behavior; open custom ports explicitly.
 
-```bash
-nix fmt
-```
+Set `declarative.enable` to opt into configuration management. The nixflix option
+schemas now live under `services.jellyfin`, with the same `users`, `libraries`,
+`system.pluginRepositories`, `plugins`, and `encoding` structure. Plugin helpers
+remain available as `lib.jellyfinPlugins.fromRepo` and `lib.buildJellyfinPlugin`.
+Configuration helpers run as root to read runtime secrets, inject the API key and
+restart Jellyfin when plugin files change. Persist `services.jellyfin.dataDir`.
 
-Check formatting and linting:
-
-```bash
-nix flake check
-```
-
-## License
-
-MPL 2.0
+`declarative.manageEncoding` writes the full nixflix `encoding` configuration by
+default. It defaults to false when nixpkgs' `hardwareAcceleration.enable` is true,
+so nixpkgs can manage encoding instead; both writers cannot be enabled together.
+GPU permissions and drivers must be configured explicitly by the host.

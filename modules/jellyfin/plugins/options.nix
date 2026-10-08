@@ -7,7 +7,7 @@ let
   jellyfinPlugins = import ../../../lib/jellyfin-plugins.nix { inherit lib; };
 in
 {
-  options.nixflix.jellyfin.plugins =
+  options.services.jellyfin.plugins =
 
     mkOption {
       description = ''
@@ -23,7 +23,7 @@ in
 
         We provide a default package for most Jellyfin plugins. To use them, just
         find it's name in the sub-options, and set
-        `"nixflix.jellyfin.plugins."<name>".enable = true;`.
+        `"services.jellyfin.plugins."<name>".enable = true;`.
 
         Plugin changes (installs, removals, version updates) cause Jellyfin to
         restart automatically. Plan plugin changes for maintenance windows to

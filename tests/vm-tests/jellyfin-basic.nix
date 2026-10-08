@@ -20,10 +20,16 @@ pkgs.testers.runNixOSTest {
         cores = 4;
       };
 
-      nixflix = {
-        enable = true;
+      # Media directories are provisioned by the host, not the Jellyfin module.
+      systemd.tmpfiles.rules = [
+        "d /media/movies 0755 root root -"
+        "d /media/films 0755 root root -"
+        "d /media/music 0755 root root -"
+      ];
 
+      services = {
         jellyfin = {
+          declarative.enable = true;
           enable = true;
 
           apiKey._secret = pkgs.writeText "jellyfin-apikey" "jellyfinApiKey1111111111111111111";
@@ -404,7 +410,7 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_unit("jellyfin-libraries.service", timeout=180)
     machine.wait_for_unit("jellyfin-branding-config.service", timeout=180)
 
-    api_token = machine.succeed("cat /run/jellyfin/auth-token")
+    api_token = machine.succeed("cat /run/jellyfin-config/auth-token")
     auth_header = f'"Authorization: {api_token}"'
     base_url = f'http://127.0.0.1:{port}'
 
@@ -832,6 +838,10 @@ pkgs.testers.runNixOSTest {
         print("Restarting Jellyfin with the corrupted config present...")
         machine.succeed("systemctl start jellyfin.service")
         machine.wait_for_unit("jellyfin.service", timeout=180)
+        # nixpkgs' Type=simple service becomes active before the API is ready.
+        machine.wait_until_succeeds(
+            f'curl -fsS -H {auth_header} {base_url}/System/Configuration/Branding', timeout=180
+        )
 
         print("Verifying encoding.xml was fully rewritten back to the configured values...")
         machine.succeed(f"grep -qF '/custom/transcode/path' {ENCODING_XML}")

@@ -8,8 +8,7 @@ with lib;
 let
   secrets = import ../../lib/secrets { inherit lib; };
   getFirstAdmin = import ../../lib/getFirstAdmin.nix { inherit lib; };
-  inherit (config) nixflix;
-  cfg = config.nixflix.jellyfin;
+  cfg = config.services.jellyfin;
 
   authUtil = import ./authUtil.nix { inherit lib pkgs cfg; };
 
@@ -36,7 +35,7 @@ let
   };
 in
 {
-  config = mkIf (nixflix.enable && cfg.enable) {
+  config = mkIf (cfg.enable && cfg.declarative.enable) {
     systemd.services.jellyfin-setup-wizard = {
       description = "Complete Jellyfin Setup Wizard";
       after = [ "jellyfin-api-key.service" ];
@@ -46,6 +45,7 @@ in
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
+        TimeoutStartSec = 300;
         ExecStartPre = waitForApiScript;
       };
 

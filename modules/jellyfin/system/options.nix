@@ -13,7 +13,7 @@ let
     };
 in
 {
-  options.nixflix.jellyfin.system = {
+  options.services.jellyfin.system = {
     serverName = mkOption {
       type = types.str;
       default = config.networking.hostName;
@@ -33,14 +33,14 @@ in
     # Paths
     cachePath = mkOption {
       type = types.str;
-      default = config.nixflix.jellyfin.cacheDir;
-      defaultText = literalExpression ''"''${config.nixflix.jellyfin.cacheDir}"'';
+      default = config.services.jellyfin.cacheDir;
+      defaultText = literalExpression ''"''${config.services.jellyfin.cacheDir}"'';
       description = ''
         Specify a custom location for server cache files such as images.
       '';
     };
 
-    metadataPath = mkStrOption "/var/lib/jellyfin/metadata" ''
+    metadataPath = mkStrOption "${config.services.jellyfin.dataDir}/metadata" ''
       Specify a custom location for downloaded artwork and metadata.
     '';
 
